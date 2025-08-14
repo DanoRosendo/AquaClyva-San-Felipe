@@ -2,38 +2,41 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const sqlite3 = require('sqlite3').verbose();
+const path = require('path');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
+// Middleware
 app.use(cors());
 app.use(bodyParser.json());
 
-// Conexión a SQLite
+// Servir archivos estáticos del frontend
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Base de datos SQLite
 const db = new sqlite3.Database('./pedidos.db', (err) => {
     if (err) return console.error(err.message);
     console.log('Conectado a la base de datos SQLite.');
 });
 
-// Crear tabla pedidos si no existe, ahora con latitud y longitud
+// Crear tabla pedidos si no existe
 db.run(`CREATE TABLE IF NOT EXISTS pedidos (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nombre TEXT NOT NULL,
     direccion TEXT NOT NULL,
     cantidad INTEGER NOT NULL,
     horaPedido TEXT NOT NULL,
-    lat REAL,
-    lng REAL,
     viajeAsignado TEXT,
     entregado INTEGER DEFAULT 0
 )`);
 
-// Endpoint para registrar un pedido
+// Endpoint API: agregar pedido
 app.post('/api/pedidos', (req, res) => {
-    const { nombre, direccion, cantidad, horaPedido, lat, lng } = req.body;
+    const { nombre, direccion, cantidad, horaPedido } = req.body;
     const viajeAsignado = null;
-    const sql = `INSERT INTO pedidos (nombre, direccion, cantidad, horaPedido, lat, lng, viajeAsignado) VALUES (?, ?, ?, ?, ?, ?, ?)`;
-    db.run(sql, [nombre, direccion, cantidad, horaPedido, lat, lng, viajeAsignado], function(err) {
+    const sql = `INSERT INTO pedidos (nombre, direccion, cantidad, horaPedido, viajeAsignado) VALUES (?, ?, ?, ?, ?)`;
+    db.run(sql, [nombre, direccion, cantidad, horaPedido, viajeAsignado], function(err) {
         if (err) {
             res.status(500).json({ error: err.message });
             return;
@@ -42,7 +45,7 @@ app.post('/api/pedidos', (req, res) => {
     });
 });
 
-// Endpoint para obtener todos los pedidos
+// Endpoint API: obtener pedidos
 app.get('/api/pedidos', (req, res) => {
     db.all(`SELECT * FROM pedidos ORDER BY id DESC`, [], (err, rows) => {
         if (err) {
@@ -53,9 +56,16 @@ app.get('/api/pedidos', (req, res) => {
     });
 });
 
+// Endpoint raíz: servir index.html por defecto
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Iniciar servidor
 app.listen(PORT, () => {
     console.log(`Servidor escuchando en http://localhost:${PORT}`);
 });
+
 
 
 
