@@ -16,7 +16,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Redirigir la raíz al archivo correcto
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'Aquaclyva index.html'));
+  res.sendFile(path.join(__dirname, 'public', 'aquaclyvaindex.html'));
 });
 
 // Conectar a SQLite
