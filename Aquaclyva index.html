@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>AquaClyva San Felipe</title>
+    <style>
+        body {
+            font-family: Garamond, sans-serif;
+            margin: 20px;
+            background-color: #338e8b;
+        }
+        h1 { text-align: center; }
+        form, .output {
+            background-color: rgb(255, 250, 250);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        label { display: block; margin-top: 10px; }
+        input, select, button {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            border-radius: 4px;
+            border: 1px solid #f0e1c1d8;
+        }
+        button {
+            background-color: #5e6356;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+        button:hover { background-color: #28a096; }
+        .order-item { padding: 8px; border-bottom: 1px solid #703434; }
+    </style>
+</head>
+<body>
+
+<h1>AquaClyva San Felipe - Registre su pedido</h1>
+
+<form id="orderForm">
+    <label>Nombre del Cliente:</label>
+    <input type="text" id="customerName" required>
+
+    <label>Dirección:</label>
+    <input type="text" id="address" required>
+
+    <button type="button" id="useLocationBtn">Usar mi ubicación</button>
+
+    <label>Cantidad de garrafones:</label>
+    <input type="number" id="quantity" min="1" required>
+
+    <label>Hora de salida deseada:</label>
+    <select id="departureTime" required>
+        <option value="08:00">08:00</option>
+        <option value="10:00">10:00</option>
+        <option value="12:00">12:00</option>
+        <option value="14:00">14:00</option>
+        <option value="16:00">16:00</option>
+    </select>
+
+    <!-- Campos ocultos para coordenadas -->
+    <input type="hidden" id="latitude" name="latitude">
+    <input type="hidden" id="longitude" name="longitude">
+
+    <button type="submit">Finaliza tu pedido</button>
+</form>
+
+<div class="output">
+    <h2>Pedidos Programados</h2>
+    <div id="orders"></div>
+</div>
+
+<script>
+    const orders = {
+        "08:00": [], "10:00": [], "12:00": [], "14:00": [], "16:00": []
+    };
+
+    // Botón para usar ubicación
+    document.getElementById("useLocationBtn").addEventListener("click", () => {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    document.getElementById("latitude").value = lat;
+                    document.getElementById("longitude").value = lng;
+                    document.getElementById("address").value = `Lat: ${lat}, Lng: ${lng}`;
+                    alert("Ubicación obtenida correctamente.");
+                },
+                (error) => {
+                    alert("No se pudo obtener la ubicación: " + error.message);
+                }
+            );
+        } else {
+            alert("Geolocalización no soportada en este navegador.");
+        }
+    });
+
+    // Envío del formulario
+    document.getElementById("orderForm").addEventListener("submit", function(event) {
+        event.preventDefault();
+        const name = document.getElementById("customerName").value;
+        const address = document.getElementById("address").value;
+        const quantity = parseInt(document.getElementById("quantity").value);
+        const time = document.getElementById("departureTime").value;
+        const lat = document.getElementById("latitude").value;
+        const lng = document.getElementById("longitude").value;
+
+        const order = { name, address, quantity, latitude: lat, longitude: lng };
+        orders[time].push(order);
+
+        // Enviar al backend
+        fetch('http://localhost:3000/api/pedidos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nombre: name, direccion: address, cantidad: quantity, horaPedido: time, lat, lng })
+        })
+        .then(res => res.json())
+        .then(data => {
+            console.log(data);
+            renderOrders();
+            this.reset();
+        })
+        .catch(err => alert("Error al registrar pedido: " + err));
+
+    });
+
+    function renderOrders() {
+        const ordersDiv = document.getElementById("orders");
+        ordersDiv.innerHTML = "";
+        for (const time in orders) {
+            if (orders[time].length > 0) {
+                const group = document.createElement("div");
+                group.innerHTML = `<h3>Salida ${time}</h3>`;
+                orders[time].forEach(order => {
+                    const item = document.createElement("div");
+                    item.className = "order-item";
+                    item.textContent = `${order.name} - ${order.address} (${order.quantity} garrafones)`;
+                    group.appendChild(item);
+                });
+                ordersDiv.appendChild(group);
+            }
+        }
+    }
+</script>
+
+</body>
+</html>
+
